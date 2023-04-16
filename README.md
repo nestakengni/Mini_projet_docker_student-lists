@@ -2,7 +2,7 @@
 
 Veuillez trouver les spécifications en cliquant [ici](https://github.com/diranetafen/student-list.git "ici")
 
-!["Crédit image : eazytraining.fr"](https://eazytraining.fr/wp-content/uploads/2020/04/pozos-logo.png) ![projet](https://user-images.githubusercontent .com/18481009/84582395-ba230b00-adeb-11ea-9453-22ed1be7e268.jpg)
+!["Crédit image : eazytraining.fr"](https://eazytraining.fr/wp-content/uploads/2020/04/pozos-logo.png) ![project](https://user-images.githubusercontent.com/18481009/84582395-ba230b00-adeb-11ea-9453-22ed1be7e268.jpg)
 
 ------------
 
@@ -62,61 +62,66 @@ cd ./student-list/simple_api
 docker build . -t devopsteams:v1
 docker images 
 ```
-> ![1-docker images](images/image%20dans%20mon%20registre%20priv%C3%A9.JPG)
+> ![1-docker images](images/images_miniprojet.JPG)
 
 2) Création du contenainer et Exécution de la commande curl pour etre sur que l'api répond correctement :
 
 ```bash
 docker run -- name api -d -p 5000:5000 devopsteams:v1
- curl -u toto:python -X GET http://192.168.56.5:5000/pozos/api/v1.0/get_student_ages
+curl -u toto:python -X GET http://192.168.56.5:5000/pozos/api/v1.0/get_student_ages
 ```
-> ![Resultat](https://user-images.githubusercontent.com/101605739/224588523-a842cd26-c5d5-4338-8547-2e31578655c9.jpg)
+> ![Resultat](images/Test_de_l'image.JPG)
 
-3) Revenez au répertoire racine du projet et exécutez le conteneur d'api backend avec ces arguments :
+Notre images étant bien construite et fonctionnelle,nous allons passer à la construction de la recette qui nous permettra de  fournir une IHM (Interface Homme Machine) a notre api et les faires communiqué entre eux  et cela sous formes d’infrastructure en tant que code et la recette obtenue sera ainsi un  ***docker-compose.yml*** .
 
+ # Infrastructure As Code
+
+
+Apres avoir edité notre recette As code , nous exécutons notre docker-compose file via la commande :
 ```bash
-cd ..
-docker run --rm -d --name=api.student_list --network=student_list.network -v ./simple_api/:/data/ api.student_list.img
-docker ps
+docker-compose up -d 
 ```
-> ![3-docker ps](https://user-images.githubusercontent.com/101605739/224589378-abcc3f7d-d5c6-4a81-ba28-767cb6cd7b7c.jpg)
+Nous avons le résultat suivant dans le navigateur :
+> ![Resultat](images/resultat_dockercompose.JPG)
 
-Comme vous pouvez le voir, le conteneur principal de l'api écoute le port 5000.
-Ce port interne peut être atteint par un autre conteneur du même réseau, j'ai donc choisi de ne pas l'exposer.
-
-J'ai également dû monter le répertoire local `./simple_api/` dans le répertoire de conteneur interne `/data/` afin que l'API puisse utiliser la liste `student_age.json`
+Notre application est accessible depuis l'extérieur grâce au port 80 donc pour avoir ce résultat au niveau du navigateur nous avons renseigner l'url suivante : https/192.168.56.5:80 .
 
 
-> ![4-./simple_api/:/data/](https://user-images.githubusercontent.com/101605739/224589839-7a5d47e6-fdff-40e4-a803-99ebc9d70b03.png)
+# Docker Registry 
 
+Apres avoir creer l'images **devopsteam** pour l'entreprise Pozos faudrais bien que l'on puise leur fournir un registre ou ils pourront stocker leurs images docker en toute  Sécurité .
 
-4) Mettez à jour le fichier `index.php` :
+  ### Créons un registre privée pour l'entreprise: 
 
-Vous devez mettre à jour la ligne suivante avant d'exécuter le conteneur de site Web pour que ***api_ip_or_name*** et ***port*** correspondent à votre déploiement
-    ` $url = 'http://<api_ip_or_name:port>/pozos/api/v1.0/get_student_ages';`
-
-Grâce aux fonctions dns de notre réseau de type pont, nous pouvons facilement utiliser le nom du conteneur api avec le port que nous avons vu juste avant pour adapter notre site
-
+  ```bash
+docker run -d -p 5000:5000 --net pozos --name registry registry:2
+```
+### Créons une interface web pour notre registre privé:
 ```bash
-sed -i s\<api_ip_or_name:port>\api.student_list:5000\g ./website/index.php
+docker run -d -p 8090:80 --net pozos -e REGISTRY_URL=http://registry:500 -e DELETE_IMAGES=true -e REGISTRY_TITLE="POZOS REGISTRY" --name frontend joxit/docker-registry-ui:static
 ```
-> ![5-api.student_list:5000](https://user-images.githubusercontent.com/101605739/224590958-49c2ce64-c9a0-4655-93da-552f27f78b2f.png)
-
-5) Exécutez le conteneur de l'application Web frontale :
-
-Le nom d'utilisateur et le mot de passe sont fournis dans le code source `.simple_api/student_age.py`
-
-> ![6-id/passwd](https://user-images.githubusercontent.com/101605739/224590363-0fdd56ae-9fb9-45e7-8912-64a6789faa9e.png)
-
+### Ensuite nous ajoutons un tag à notre images pour pouvoir la push sur notre registre privée :
+ ```bash
+docker tag  e6ef6d614c44 localhost:5000/devospteams:local
+```
+### Puis nous réalisons un push de notre images sur notre registre privée :
 ```bash
-docker run --rm -d --name=webapp.student_list -p 80:80 --network=student_list.network -v ./website/:/var/www/html -e USERNAME=toto -e PASSWORD=python php : apache
-docker ps
+docker push localhost:5000/devospteams:local
 ```
-> ![7-docker ps](https://user-images.githubusercontent.com/101605739/224591443-344fd2cd-ddbc-4780-bbc5-7cc0bdac156f.jpg)
+Nous pouvons donc observer que notre images est bien dans notre registre privé comme le montre les figures suivantes:
 
+> ![Resultat](images/registrepriv%C3%A9.JPG)
 
-6) Testez l'api via le frontend :
+> ![Resultat](images/image%20dans%20mon%20registre%20priv%C3%A9.JPG)
 
-6a) En ligne de commande :
+NB:Pour que notre les deux conteneur qui doivent gerer notre registre privé communique entre , nous avons creer un réseau de nom **pozos**  et de type **bridge** grâce à la commande :
+```bash
+docker network create pozos 
+```
 
-La commande suivante demandera au conteneur frontal de demander l'API backend et
+------------
+
+# Ceci conclut mon rapport d'exécution de mini-projet Docker.
+Tout au long de ce projet, j'ai eu l'opportunité de créer une image Docker personnalisée, de configurer des réseaux et des volumes et de déployer des applications à l'aide de docker-compose. Dans l'ensemble, ce projet a été une expérience enrichissante qui m'a permis de renforcer mes compétences techniques et d'acquérir une meilleure compréhension des principes des microservices. Je suis maintenant mieux équipé pour aborder des projets similaires à l'avenir et contribuer à l'amélioration des processus de conteneurisation et de déploiement dans ma future entreprise.
+
+![octocat](https://myoctocat.com/assets/images/base-octocat.svg) 
