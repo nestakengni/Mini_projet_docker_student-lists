@@ -1,0 +1,22 @@
+version: '3.1'
+services:
+  api:
+    image: devopsteams:v1
+    container_name: api
+    volumes:
+      - /home/vagrant/student-list/simple_api/student_age.json:/data/student_age.json
+#      - $PWD/simple_api/student_age.json:/data/student_age.json
+  ihm:
+    depends_on:
+      - api  
+    image: php:apache
+    environment:
+      - USERNAME=toto
+      - PASSWORD=python
+    volumes:
+      - ./website:/var/www/html
+    ports:
+      - "80:80"
+networks:
+  devopsteam:
+  
